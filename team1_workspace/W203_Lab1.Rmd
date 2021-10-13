@@ -87,10 +87,10 @@ The code below extracts true responses from voting difficulty data. If the respo
 ```{r}
 df2 <- filt[!(filt$`Voting Difficulty` < 1 | filt$`Voting Difficulty` > 5),]
 
-df2$`Party ID` = ifelse(df2$`Party ID` == 1 | df2$`Party ID` == 2 | df2$`Party ID` == 3, "R", ifelse(df2$`Party ID` == 4, "Ind", ifelse(df2$`Party ID` == 5 | df2$`Party ID` == 6 | df2$`Party ID` == 7, "D", NA)))
+df2$`Party ID` = ifelse(df2$`Party ID` == 1 | df2$`Party ID` == 2 | df2$`Party ID` == 3, "D", ifelse(df2$`Party ID` == 4, "Ind", ifelse(df2$`Party ID` == 5 | df2$`Party ID` == 6 | df2$`Party ID` == 7, "R", NA)))
 
-df2$`Party Lean` = ifelse(df2$`Party Lean` == 3, "R", ifelse(df2$`Party Lean` == 2, "Ind", ifelse(df2$`Party Lean` == 1, "D", NA)))
-df2$`Party Self ID` = ifelse(df2$`Party Self ID` == 1, "R", ifelse(df2$`Party Self ID` == 2, "Ind", ifelse(df2$`Party Self ID` == 3, "D", NA)))
+df2$`Party Lean` = ifelse(df2$`Party Lean` == 3, "D", ifelse(df2$`Party Lean` == 2, "Ind", ifelse(df2$`Party Lean` == 1, "R", NA)))
+df2$`Party Self ID` = ifelse(df2$`Party Self ID` == 1, "D", ifelse(df2$`Party Self ID` == 2, "R", ifelse(df2$`Party Self ID` == 3, "Ind", NA)))
 
 head(df2)
 ```
@@ -124,7 +124,7 @@ head(df2)
 8)  5. Other party {SPECIFY}
 ```{r}
 
-df2$`Party Classification` = ifelse(df2$`Party ID` == "D", "D", ifelse(df2$`Party ID` == "R", "R", ifelse(df2$`Party ID` == "D", "D", ifelse(df2$`Party Lean` == "D", "D", ifelse(df2$`Party Lean` == "R", "R", ifelse(df2$`Party Self ID` == "D", "D", ifelse(df2$`Party Self ID` == "R", "R", ifelse(df2$`Party Self ID` == "Ind", "Ind", ifelse(is.na(df2$`Party Self ID`), "Ind","Ind")))))))))
+df2$`Party Classification` = ifelse(df2$`Party ID` == "D", "D", ifelse(df2$`Party ID` == "R", "R", ifelse(df2$`Party Lean` == "D", "D", ifelse(df2$`Party Lean` == "R", "R", df2$`Party Self ID`))))
 
 table(df2$`Party Classification`)
 ```
@@ -133,7 +133,7 @@ table(df2$`Party Classification`)
 ```{r}
 df2 = df2[(df2$`Party Classification` == "D" | df2$`Party Classification` == "R"),]
 
-voter_data = df2[,c(5,4)]
+voter_data = na.omit(df2[,c(5,4)])
 
 dem_data = voter_data[(voter_data$`Party Classification` == "D"),]
 rep_data = voter_data[(voter_data$`Party Classification` == "R"),]
@@ -141,6 +141,7 @@ rep_data = voter_data[(voter_data$`Party Classification` == "R"),]
 
 head(voter_data)
 ```
+
 ```{r}
 require(gridExtra)
 plot1 <- ggplot(dem_data, aes(x = `Voting Difficulty`)) +
@@ -155,7 +156,7 @@ grid.arrange(plot1, plot2, ncol=2)
 Our goal is to evaluate whether democratic or republican voters experience more voting difficulty. Upon analyzing the data, our reponse variable **Voting Difficulty** is an ordinal variable measured on a Likert Scale from 1-5 where 1 signifies less difficulty while 5 signifies more difficulty. Ordinal data results in the need for a **non-parametric test**. Additionally, we are comparing between two distinct groups without a natural pairing, **so a paired test is ruled out**. The samples here are independent as the perception of voting difficulty for one respondent does not inform on another's response. Finally, upon evaluating the response variable density across party lines, voting difficulty has a similar distribution in both cases. Therefore, the characteristics listed above meet the assumptions for a **Wilcoxon Rank Sum Test**.
 
 ```{r}
-res <- wilcox.test(dem_data$`Voting Difficulty`, rep_data$`Voting Difficulty`, alternative = "less")
+res <- wilcox.test(dem_data$`Voting Difficulty`, rep_data$`Voting Difficulty`)
 res
 ```
 Wilcoxon Rank Sum Two Tailed Test. Null is voter difficulty is equal, alternative is voter difficulty is not equal
