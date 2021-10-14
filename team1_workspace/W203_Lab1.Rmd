@@ -122,6 +122,22 @@ head(df2)
 6)  2. Republican
 7)  3. Independent
 8)  5. Other party {SPECIFY}
+
+```{r}
+ind_voters = df2[(df2$`Party Self ID` == "Ind"),]
+```
+
+```{r}
+require(gridExtra)
+ind_voters_party_id <- ggplot(ind_voters, aes(x = `Party ID`)) +
+  geom_bar(color=c('blue','red','yellow','black'),aes(y = (..count..)/sum(..count..))) + ggtitle("Party ID for Self Identified Independents") + ylab("Proportion of Responses")
+
+ind_voters_party_lean <- ggplot(ind_voters, aes(x = `Party Lean`)) +
+  geom_bar(color=c('blue','red','yellow','black'),aes(y = (..count..)/sum(..count..))) + ggtitle("Party Lean for Self Identified Independents") + ylab("Proportion of Responses")
+grid.arrange(ind_voters_party_id,ind_voters_party_lean,ncol = 2)
+```
+
+
 ```{r}
 
 df2$`Party Classification` = ifelse(df2$`Party ID` == "D", "D", ifelse(df2$`Party ID` == "R", "R", ifelse(df2$`Party Lean` == "D", "D", ifelse(df2$`Party Lean` == "R", "R", df2$`Party Self ID`))))
@@ -141,6 +157,7 @@ rep_data = voter_data[(voter_data$`Party Classification` == "R"),]
 
 head(voter_data)
 ```
+
 
 ```{r}
 require(gridExtra)
