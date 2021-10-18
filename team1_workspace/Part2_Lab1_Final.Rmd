@@ -1,16 +1,49 @@
 ---
-title: "Lab 1 - Report"
+title: "Partisan Effects and Difficulty Voting in 2020 Election"
+subtitle: 'Oscar Casas, Amit Gattadahalli, Rebecca Hile, and Tres Pimentel'
 output: pdf_document
 ---
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(haven)
+library(gridExtra)
 ```
 
-Partisan Effects and Difficulty Voting in 2020 Election
- Oscar Casas, Amit Gattadahalli, Rebecca Hile, and Tres Pimentel
+```{r echo = FALSE}
+#Cleansing and analysis in this section so we can bring in our graphs
 
-INTRODUCTION
+temp <- tempfile()
+download.file("https://electionstudies.org/anes_timeseries_2020_stata_20210719/",temp)
+data.df <- read_dta(unz(temp, "anes_timeseries_2020_stata_20210719.dta"))
+
+filt <- data.df[, c("V201231x","V201230","V201228","V202119")]
+names(filt) = c('Party ID','Party Lean','Party Self ID','Voting Difficulty')
+
+df2 <- filt[!(filt$`Voting Difficulty` < 1 | filt$`Voting Difficulty` > 5),]
+df2$`Party ID` = ifelse(df2$`Party ID` == 1 | df2$`Party ID` == 2 | df2$`Party ID` == 3, "D", ifelse(df2$`Party ID` == 4, "Ind", ifelse(df2$`Party ID` == 5 | df2$`Party ID` == 6 | df2$`Party ID` == 7, "R", NA)))
+
+df2$`Party Lean` = ifelse(df2$`Party Lean` == 3, "D", ifelse(df2$`Party Lean` == 2, "Ind", ifelse(df2$`Party Lean` == 1, "R", NA)))
+df2$`Party Self ID` = ifelse(df2$`Party Self ID` == 1, "D", ifelse(df2$`Party Self ID` == 2, "R", ifelse(df2$`Party Self ID` == 3, "Ind", NA)))
+
+ind_voters = df2[(df2$`Party Self ID` == "Ind"),]
+
+df2$`Party Classification` = ifelse(df2$`Party ID` == "D", "D", ifelse(df2$`Party ID` == "R", "R", ifelse(df2$`Party Lean` == "D", "D", ifelse(df2$`Party Lean` == "R", "R", df2$`Party Self ID`))))
+
+df2 = df2[(df2$`Party Classification` == "D" | df2$`Party Classification` == "R"),]
+
+voter_data = na.omit(df2[,c(5,4)])
+
+dem_data = voter_data[(voter_data$`Party Classification` == "D"),]
+rep_data = voter_data[(voter_data$`Party Classification` == "R"),]
+
+
+
+```
+
+
+### INTRODUCTION
 
 The 2020 election was surrounded by uncertainty and a tumultuous relationship between physical voter presence and a looming pandemic. The effects of the pandemic impacted millions of Americans, causing some states to initiate options for vote-by-mail. The partisan effects of this change have been of interest with the voter’s experience in question. 
 
@@ -18,41 +51,69 @@ This analysis will further the discussion around party association and perceived
 
 “Did Democratic voters or Republican voters experience more difficulty voting in the 2020 election?”
 
-The voter experience plays a critical role in people participating in the democratic process. With the added health concerns resulting from exposure to COVID-19, other channels like mail-in ballot or early voting saw a surge. Republican party members saying “restrictions are necessary” to reduce voter fraud, while Democrats see this as ways to “keep people from exercising their civic rights” . Gaining insight into whether there is a relationship between political parties and difficulty voting could have resulted in fewer votes for the party being impacted. Exploring this question utilizing a Wilcoxon Rank-Sum statistical test could give some insight into the relationship between political parties and perceived difficulty at the polls. 
+The voter experience plays a critical role in people participating in the democratic process. With the added health concerns resulting from exposure to COVID-19, other channels like mail-in ballot or early voting saw a surge. Republican party members saying “restrictions are necessary” to reduce voter fraud, while Democrats see this as ways to “keep people from exercising their civic rights” .
+^[ Levinson-King, “US election 2020: Why it can be hard to vote in the US,” BBC, https://www.bbc.com/news/election-us-2020-54240651] Gaining insight into whether there is a relationship between political parties and difficulty voting could have resulted in fewer votes for the party being impacted. Exploring this question utilizing a Wilcoxon Rank-Sum statistical test could give some insight into the relationship between political parties and perceived difficulty at the polls. 
 
-DATA AND METHODOLOGY
+### DATA AND METHODOLOGY
 
 This analysis leverages 2020 time series data from the American National Election Studies (ANES). The data represented from the ANES comes from a pre- and post-election outreach in the form of video, telephone, and web interviews. The data collected includes information about voters’ party preferences, voting intentions, and experience at the polls.
 
 To operationalize the data from the ANES, the concept of being a Democratic voter versus a Republican voter was explored. Research has shown that those survey participants that tend to “lean” Democratic or “lean” Republican should not be considered independents. Those that choose independent but lean Democratic or Republican in the United States tend to do so for presentation purposes but actually exude partisan behaviors. As such, this analysis will reclassify those respondents into Democratic or Republican categories to adjust for this effect. 
 
-First, if the survey participant selected either Democrat or Republican when asked if they think of themselves as a Democrat, Republican, or Independent, these respondents were classified into those respective categories.
-^[1 Levinson-King, “US election 2020: Why it can be hard to vote in the US,” BBC, https://www.bbc.com/news/election-us-2020-54240651 2 Petrocik. “Measuring Party Support: Leaners are not Independents.” (2009)]
+First, if the survey participant selected either a Democratic or Republican leaning response when asked if they think of themselves as a Democrat, Republican, or Independent (e.g. Strong Democrat, Not very strong Democrat, or Independent-Democrat) these respondents were classified into those respective categories.
+^[2 Petrocik. “Measuring Party Support: Leaners are not Independents.” (2009)]
 
-Secondly, those respondents that did not select a party identification or self reported independent were asked which party they felt closer to. Respondents could opt out of this question if no closeness existed. As seen in Figure 1, many respondents that self-classified as “Independent” acknowledge leaning Democratic or Republican. This analysis reclassified these respondents into these respective categories. 
+Secondly, those respondents that did not select a party identification or self reported independent were asked which party they felt closer to. Respondents could opt out of this question if no closeness existed. As seen in Figure 1, many respondents that self-classified as “Independent” acknowledge leaning Democratic or Republican. This analysis reclassified these respondents into these respective categories.
+
+```{r echo = FALSE, message = FALSE, fig.width=4, fig.height=3, fig.align = 'center'}
+require(gridExtra)
+ind_voters_party_id <- ggplot(ind_voters, aes(x = `Party ID`)) +
+  geom_bar(color=c('blue','red','yellow','black'),aes(y = (..count..)/sum(..count..))) + ggtitle("Party ID for Self Identified Independents") + ylab("Proportion of Responses") + labs(caption = "Figure 1")
+
+
+Democrats <- dem_data %>% group_by(`Voting Difficulty`) %>% summarize(DF="Democrats", n=n())
+Republicans <- rep_data %>% group_by(`Voting Difficulty`) %>% summarize(DF="Republicans", n=n())
+Voting_Difficulty_By_Party <- rbind(Republicans, Democrats)
+
+Difficulty <- ggplot(Voting_Difficulty_By_Party, aes(x=`Voting Difficulty`, y=n, fill=DF)) + ylab('Number of Voters') +  geom_bar(stat="identity", position="dodge") + labs(fill='Self-Identification') +ggtitle("Voting Difficulty by Party") + labs(caption = "Figure 2")
+
+ind_voters_party_id
+
+#grid.arrange(ind_voters_party_id, Difficulty, ncol=2)
+```
 
 The survey includes a post-election question asking the respondent how difficult it was to vote based on a Likert scale from 1 - “Not difficult at all” to 5 - “Extremely difficult”. As the question of difficulty does not have a standard unit between respondents, i.e. one respondent’s experience may have been much more difficult than another but both respondents perceived this experience as a 5 - “Extremely Difficult”, this variable cannot follow a metric scale. As such, this statistical analysis will treat this on an ordinal scale. Participants had the opportunity to opt out of this question. In such a case, these responses have been excluded.
 
 Figure 2 displays Democratic (blue) and Republican (red) responses to voting difficulty. There seems to be a similar trend in responses with most respondents selecting 1 - “Not difficult at all”. However, there was slight variation in responses between Democratic and Republican respondents in selecting options 2 - “A little difficult” and 3 - “Moderately difficult” with the trend reducing after that. 
 
+```{r echo = FALSE, message = FALSE, fig.width=6, fig.height=4, fig.align = 'center'}
+Difficulty
+```
+
 To explore the statistical significance of these differences, this analysis will use a Wilcoxon Rank-Sum hypothesis of comparisons test to evaluate the results.
 
-Null hypothesis: The probability that a Democratic voter ranks higher than a Republican voter in voter difficulty is equal to the probability that a Republican voter ranks higher than a Democratic voter in voter difficulty. 
+### Null hypothesis: The probability that a Democratic voter ranks higher than a Republican voter in voter difficulty is equal to the probability that a Republican voter ranks higher than a Democratic voter in voter difficulty. 
 The Wilcoxon Rank-Sum test requires the following to be true:
 
-Independent and Identically Distributed (IID): 
-In order to meet the IID requirement, the survey responses must not be dependent on each other. The survey respondents were selected based on former participants and a freshly drawn cross-section of individuals over the age of 18 from all 50 states from a target population of 231 million people. The new participants were selected at random and applied to one of the three modes of interviews. This approach supports independence.  
-The two categories of Democratic and Republican must also come from the same distribution. This is the case as these variables come from one singular draw from the same population. 
-Ordinal:
-The dependent variable of “Difficulty Voting” does not have a metric scale, as the respondents personal experience is not in a standard unit of measure. Hence, this variable must be treated as ordinal.  
+* Independent and Identically Distributed (IID): 
+  * In order to meet the IID requirement, the survey responses must not be dependent on each other. The survey respondents were selected based on former participants and a freshly drawn cross-section of individuals over the age of 18 from all 50 states from a target population of 231 million people. The new participants were selected at random and applied to one of the three modes of interviews. This approach supports independence.  
+  * The two categories of Democratic and Republican must also come from the same distribution. This is the case as these variables come from one singular draw from the same population. 
+* Ordinal data:
+  * The dependent variable of “Difficulty Voting” does not have a metric scale, as the respondents personal experience is not in a standard unit of measure. Hence, this variable must be treated as ordinal.  
 
-RESULTS
-The test results indicate W = 4323800, p = 0.003541 for a two-tailed Wilcoxon Rank-Sum test.  These results are significant at α = .05 and we would therefore reject our null hypothesis. This means that there is statistical evidence to support that the average difficulty between the two parties, Democrat and Republican, is not the same.
+### RESULTS
+```{r echo = T, results = 'hide'}
+res <- wilcox.test(dem_data$`Voting Difficulty`, rep_data$`Voting Difficulty`)
+res
+```
+
+The test results indicate W = 4323800, p = 0.003541 for a two-tailed Wilcoxon Rank-Sum test.  These results are significant at 	$\alpha$ = .05 and we would therefore reject our null hypothesis. This means that there is statistical evidence to support that the average difficulty between the two parties, Democrat and Republican, is not the same.
 
 Further investigation would need to take place to understand which party is impacted more by voter difficulty. This research and the chosen methodology were specifically designed to test whether a difference exists, rather than the direction of any such difference.
 
-SUMMARY 
+### SUMMARY 
 
 Practically, our research means that Republicans and Democrats (under our definition of each, which is the group of people who self-identify as a member of each respective party, or lacking self-identification, “lean” towards each respective party) did not experience the same level of difficulty voting in the 2020 election.
 
 It is important to the overall concept of and health of a democracy that all who are eligible to vote are able to do so without too much difficulty.  Although it would be inappropriate to make any statement on the overall level of voting difficulty, it can be seen from the analysis that one group of people finds it significantly more difficult to vote.  In order to ensure all people are able to exercise their right to vote, it would be worthwhile to examine potential causes and remedies for this significantly higher level of voting difficulty.
+
